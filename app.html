@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedFuse | Clinical Decision Support</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* 1. THE CLASSY CLINICAL PALETTE */
+        :root { 
+            --bg: #F4F7F9;         
+            --card: #FFFFFF;       
+            --primary: #0B2447;    
+            --secondary: #19376D;  
+            --accent: #576CBC;     
+            --danger: #E11D48;     
+            --success: #059669;    
+            --text-main: #1E293B;  
+            --text-muted: #64748B; 
+            --border: #E2E8F0;     
+        }
+
+        /* 2. CLEAN BACKGROUND & TYPOGRAPHY */
+        /* Updated with Flexbox for Sticky Footer */
+        body { 
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text-main); 
+            margin: 0; 
+            padding: 0; 
+            letter-spacing: -0.01em; 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container { 
+            max-width: 1400px; 
+            margin: 2rem auto; 
+            padding: 0 1rem; 
+            flex: 1; /* Pushes footer to the bottom */
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 3. THE "APPLE HEALTH" CARD SHADOWS */
+        .card { 
+            background: var(--card); 
+            padding: 1.75rem; 
+            border-radius: 16px; 
+            border: 1px solid rgba(226, 232, 240, 0.6); 
+            box-shadow: 0 4px 24px -4px rgba(15, 23, 42, 0.06), 0 2px 8px -2px rgba(15, 23, 42, 0.04); 
+            transition: all 0.2s ease-in-out;
+        }
+        .card:hover {
+            box-shadow: 0 12px 32px -4px rgba(15, 23, 42, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .hidden { display: none !important; }
+
+        /* 4. PREMIUM BUTTONS */
+        button { 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            padding: 0.8rem 1.5rem; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 0.95rem;
+            width: 100%; 
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(11, 36, 71, 0.2);
+        }
+        button:hover { 
+            background: var(--accent); 
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(87, 108, 188, 0.3);
+        }
+        
+        .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text-main); box-shadow: none; }
+        .btn-outline:hover { border-color: var(--primary); color: var(--primary); background: #F8FAFC; box-shadow: none; }
+        .btn-danger { background: var(--danger); box-shadow: 0 2px 4px rgba(225, 29, 72, 0.2); }
+        .btn-danger:hover { background: #BE123C; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.3); color: white; border-color: transparent;}
+
+        /* 5. ELEGANT INPUTS */
+        input, select, textarea { 
+            padding: 0.85rem; 
+            border: 1.5px solid var(--border); 
+            border-radius: 8px; 
+            width: 100%; 
+            box-sizing: border-box; 
+            margin-bottom: 1rem; 
+            font-family: inherit;
+            font-size: 0.95rem;
+            background: #FAFAFA;
+            color: var(--text-main);
+            transition: all 0.2s ease;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(87, 108, 188, 0.15);
+        }
+
+        /* 6. CLEAN NAVBAR */
+        .navbar { 
+            background: var(--card); 
+            color: var(--primary); 
+            padding: 1rem 2.5rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid var(--border); 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+        .navbar h2 { margin: 0; font-weight: 800; letter-spacing: -0.5px; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 1.5rem; } 
+        
+        .section-header { background: #F8FAFC; padding: 0.6rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-weight: 600; color: var(--primary); border-left: 4px solid var(--accent);}
+        .patient-row { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: 0.2s; border-radius: 8px; background: white; border: 1px solid var(--border);}
+        .patient-row:hover { background: #F8FAFC; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-color: var(--accent); }
+        .image-preview-box { width: 100%; background: #F1F5F9; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 1rem; position: relative; border: 1px solid var(--border); }
+        .gauge-text { font-size: 3rem; font-weight: 800; color: var(--primary); text-align: center; margin: 0.5rem 0; }
+        
+        .tab-btn { flex: 1; text-align: center; padding: 0.8rem; cursor: pointer; font-weight: bold; color: var(--text-muted); transition: 0.2s; border-bottom: 2px solid transparent;}
+        .tab-btn.active { background: #F8FAFC; color: var(--primary); border-bottom: 2px solid var(--primary); }
+        
+        .queue-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+        .queue-col { background: #F8FAFC; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); }
+        .queue-col h4 { margin-top: 0; text-align: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+        .history-header:hover { background: #F1F5F9 !important; }
+
+        /* 7. PREMIUM ENTERPRISE FOOTER */
+        .footer {
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            padding: 2.5rem 2rem 1.5rem 2rem;
+            margin-top: 4rem;
+            color: var(--text-muted);
+            box-shadow: 0 -4px 20px rgba(11, 36, 71, 0.02);
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .footer-brand h3 {
+            margin: 0 0 0.5rem 0;
+            color: var(--primary);
+            font-size: 1.25rem;
+            letter-spacing: -0.5px;
+        }
+
+        .footer-brand p { margin: 0; font-size: 0.95rem; line-height: 1.5; }
+
+        .footer-links { text-align: right; }
+        .footer-links a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-left: 1.5rem;
+            transition: color 0.2s ease;
+        }
+        .footer-links a:hover { color: var(--accent); }
+
+        .footer-contact { margin-top: 0.75rem; font-size: 0.95rem; }
+        .footer-contact a { color: var(--text-muted); text-decoration: none; transition: color 0.2s ease; }
+        .footer-contact a:hover { color: var(--primary); }
+
+        .footer-bottom {
+            max-width: 1400px;
+            margin: 2rem auto 0 auto;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            .footer-content { grid-template-columns: 1fr; text-align: center; }
+            .footer-links { text-align: center; }
+            .footer-links a { margin: 0 0.75rem; display: inline-block; margin-bottom: 0.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <h2><i class="fa-solid fa-shield-heart" style="margin-right: 10px; color: var(--accent);"></i> MedFuse</h2>
+        <div id="nav-user"><span id="user-display" style="font-weight: 600;">Not Logged In</span><button onclick="logout()" id="logout-btn" class="btn-outline hidden" style="margin-left: 1rem; width: auto; padding: 0.5rem 1rem;"><i class="fa-solid fa-right-from-bracket"></i> Logout</button></div>
+    </nav>
+
+    <div class="container">
+        
+        <div id="auth-section" style="display: flex; height: 85vh; background: var(--card); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); border: 1px solid var(--border); margin-top: 1rem;">
+            
+            <div style="flex: 1; background-image: url('https://images.unsplash.com/photo-1579684385127-1ef15d508118?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'); background-size: cover; background-position: center; background-repeat: no-repeat; position: relative;">
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to right, rgba(11, 36, 71, 0.9), rgba(25, 55, 109, 0.6)); display: flex; flex-direction: column; justify-content: center; padding: 3rem; color: white; box-sizing: border-box;">
+                    <h1 style="font-size: 3.5rem; margin-bottom: 1rem; font-weight: 800;"><i class="fa-solid fa-shield-heart"></i> MedFuse</h1>
+                    <p style="font-size: 1.25rem; max-width: 90%; line-height: 1.6; opacity: 0.9;">The next-generation Doctor-AI co-pilot. Fusing edge computer vision, predictive triage, and offline diagnostics into a unified clinical workspace.</p>
+                </div>
+            </div>
+
+            <div style="flex: 1; padding: 4rem; display: flex; flex-direction: column; justify-content: center; background: white;">
+                <div style="display: flex; border-bottom: 1px solid var(--border); margin-bottom: 2rem;">
+                    <div style="padding: 0.75rem 1rem; cursor: pointer; font-weight: bold; color: var(--primary); border-bottom: 2px solid var(--primary);" onclick="switchTab('login')" id="tab-login"><i class="fa-solid fa-lock"></i> Portal Access</div>
+                    <div style="padding: 0.75rem 1rem; cursor: pointer; color: var(--text-muted);" onclick="switchTab('reg-patient')" id="tab-reg-patient"><i class="fa-solid fa-user-plus"></i> New Patient</div>
+                    <div style="padding: 0.75rem 1rem; cursor: pointer; color: var(--text-muted);" onclick="switchTab('reg-doctor')" id="tab-reg-doctor"><i class="fa-solid fa-user-doctor"></i> New Doctor</div>
+                </div>
+
+                <div id="form-login">
+                    <h3 style="font-size: 1.5rem; color: var(--primary); margin-top: 0;">Secure System Login</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Enter your credentials to access the CDSS.</p>
+                    <input type="text" id="login-id" placeholder="ID (PID-... or DOC-...) or ADMIN-123">
+                    <button onclick="login()"><i class="fa-solid fa-right-to-bracket"></i> Access System</button>
+                    <p id="login-msg" style="color: var(--danger); font-weight: bold; margin-top: 1rem;"></p>
+                </div>
+
+                <div id="form-reg-patient" class="hidden">
+                    <h3 style="font-size: 1.5rem; color: var(--primary); margin-top: 0;">Patient Registration</h3>
+                    <input type="text" id="reg-p-name" placeholder="Full Legal Name">
+                    <div style="display: flex; gap: 1rem;">
+                        <input type="number" id="reg-p-age" placeholder="Age" style="flex: 1;">
+                        <input type="text" id="reg-p-phone" placeholder="Phone Number" style="flex: 2;">
+                    </div>
+                    <input type="text" id="reg-p-location" placeholder="City / Area (e.g., Shivamogga)">
+                    <button onclick="registerPatient()"><i class="fa-solid fa-file-medical"></i> Create Medical File</button>
+                    <div id="reg-p-msg" class="hidden" style="margin-top: 1rem; padding: 1rem; background: #ECFDF5; border-left: 4px solid var(--success); color: var(--success); font-weight: 600;"></div>
+                </div>
+
+                <div id="form-reg-doctor" class="hidden">
+                    <h3 style="font-size: 1.5rem; color: var(--primary); margin-top: 0;">Physician Registration</h3>
+                    <input type="text" id="reg-d-name" placeholder="Dr. Name">
+                    <select id="reg-d-dept" style="cursor: pointer;">
+                        <option value="General">General Practice</option>
+                        <option value="Dermatology">Dermatology</option>
+                        <option value="Neurology">Neurology</option>
+                        <option value="Pulmonology">Pulmonology</option>
+                    </select>
+                    <input type="password" id="reg-d-admin" placeholder="Admin Security Key">
+                    <button onclick="registerDoctor()"><i class="fa-solid fa-stethoscope"></i> Register Credentials</button>
+                    <div id="reg-d-msg" class="hidden" style="margin-top: 1rem; padding: 1rem; background: #ECFDF5; border-left: 4px solid var(--success); color: var(--success); font-weight: 600;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-dashboard" class="hidden">
+            <h2 style="color: var(--primary);"><i class="fa-solid fa-earth-americas"></i> Population Health Command Center</h2>
+            <div class="card" style="border-left: 4px solid var(--accent);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="margin-top: 0;">Live Pneumonia Outbreak Radar</h3>
+                        <p style="color: var(--text-muted); margin-top: -10px;">Tracking active cases (Auto-purges after 7 days).</p>
+                    </div>
+                    <span style="background: #FEF2F2; color: var(--danger); padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold; border: 1px solid var(--danger);">
+                        <i class="fa-solid fa-satellite-dish fa-beat"></i> Live Global Uplink
+                    </span>
+                </div>
+                
+                <div class="grid-2" style="margin-top: 1rem;">
+                    <div id="admin-outbreak-list" style="max-height: 400px; overflow-y: auto; padding-right: 10px;"></div>
+                    
+                    <div id="outbreak-map" style="height: 400px; border-radius: 8px; border: 1px solid var(--border); z-index: 1;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="patient-dashboard" class="hidden">
+            <h2 id="patient-welcome" style="color: var(--primary);"></h2>
+            <div class="grid-2">
+                <div>
+                    <div class="card" style="border-left: 4px solid var(--danger); margin-bottom: 1.5rem;">
+                        <h3 style="color: var(--danger); margin-top: 0;"><i class="fa-solid fa-truck-medical"></i> Emergency Services</h3>
+                        <button class="btn-danger" onclick="triggerSOS()"><i class="fa-solid fa-bell"></i> TRIGGER SOS DISPATCH</button>
+                        <p id="sos-msg" style="margin-top: 1rem; font-weight: bold; color: var(--danger);"></p>
+                    </div>
+                    <div class="card" id="booking-section">
+                        <h3 style="margin-top: 0;"><i class="fa-solid fa-calendar-check" style="color: var(--accent);"></i> Book Appointment</h3>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem;">
+                            <button class="btn-outline" style="width: auto;" onclick="loadDoctors('General')">General</button>
+                            <button class="btn-outline" style="width: auto;" onclick="loadDoctors('Dermatology')">Dermatology</button>
+                            <button class="btn-outline" style="width: auto;" onclick="loadDoctors('Neurology')">Neurology</button>
+                            <button class="btn-outline" style="width: auto;" onclick="loadDoctors('Pulmonology')">Pulmonology</button>
+                        </div>
+                        <div id="doctor-list" class="hidden" style="padding: 1rem; background: #F8FAFC; border: 1px solid var(--border); border-radius: 8px;"></div>
+                        <p id="book-msg"></p>
+                    </div>
+
+                    <div class="card hidden" id="active-appointment-section" style="border-left: 4px solid var(--success); margin-top: 1.5rem;">
+                        <h3 style="color: var(--success); margin-top: 0;"><i class="fa-regular fa-calendar-check"></i> Active Scheduled Appointment</h3>
+                        <div id="active-appt-details" style="margin-bottom: 1.5rem; font-size: 1.1rem;"></div>
+                        <button class="btn-outline" onclick="closeAppointment()"><i class="fa-solid fa-xmark"></i> Dismiss / Close Appointment</button>
+                        <p id="close-msg" style="color: var(--success); font-weight: bold; margin-bottom: 0; margin-top: 1rem;"></p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0;"><i class="fa-solid fa-folder-open" style="color: var(--accent);"></i> Complete Medical History</h3>
+                        <button class="btn-outline" style="width: auto; padding: 0.4rem 0.8rem;" onclick="refreshPatientData()"><i class="fa-solid fa-rotate"></i> Refresh File</button>
+                    </div>
+                    <div id="medical-records-list">
+                        <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                            <i class="fa-solid fa-file-medical" style="font-size: 3rem; opacity: 0.2; margin-bottom: 1rem;"></i>
+                            <br><i>No medical history found.</i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="doctor-dashboard" class="hidden">
+            <h2 id="doctor-welcome" style="margin-bottom: 0.25rem; color: var(--primary);"></h2>
+            
+            <div id="doc-queue-view" class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0;"><i class="fa-solid fa-users" style="color: var(--accent);"></i> Triage Queue System</h3>
+                    <button class="btn-outline" style="width: auto; padding: 0.4rem 0.8rem;" onclick="refreshDoctorQueue()"><i class="fa-solid fa-rotate"></i> Refresh Queue</button>
+                </div>
+                
+                <div class="queue-grid">
+                    <div class="queue-col" style="border-top: 4px solid var(--danger);">
+                        <h4 style="color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Critical</h4>
+                        <div id="q-critical"></div>
+                    </div>
+                    <div class="queue-col" style="border-top: 4px solid var(--success);">
+                        <h4 style="color: var(--success);"><i class="fa-solid fa-check-circle"></i> Routine</h4>
+                        <div id="q-routine"></div>
+                    </div>
+                    <div class="queue-col" style="border-top: 4px solid var(--text-muted);">
+                        <h4 style="color: var(--text-muted);"><i class="fa-solid fa-lock"></i> Closed Files</h4>
+                        <div id="q-closed"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="doc-workspace-view" class="hidden">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: #F8FAFC; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                    <h3 id="workspace-patient-name" style="margin: 0; color: var(--primary); font-size: 1.5rem;"><i class="fa-solid fa-hospital-user"></i> Patient Workspace</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-outline" style="width: auto; background: white;" onclick="viewPatientHistory(activePatientId, 'Active Patient')"><i class="fa-solid fa-clock-rotate-left"></i> View Past Records</button>
+                        <button class="btn-danger" style="width: auto;" onclick="closeWorkspace()"><i class="fa-solid fa-xmark"></i> Close Workspace</button>
+                    </div>
+                </div>
+
+                <div class="grid-3">
+                    <div class="card" style="background: #F8FAFC; box-shadow: none;">
+                        <div class="section-header">1. Upload Diagnostic</div>
+                        <select id="scan-type" style="margin-bottom: 1.5rem; background: white;">
+                            </select>
+                        <input type="file" id="file-upload" accept="image/*" onchange="previewImage(event)" style="background: white;">
+                        <div class="image-preview-box" id="preview-container" style="height: 200px;"><span style="color: var(--text-muted);"><i class="fa-solid fa-image"></i> Raw Upload Preview</span></div>
+                        <button onclick="runDoctorAI()"><i class="fa-solid fa-microchip"></i> Run Intelligent Analysis</button>
+                    </div>
+
+                    <div class="card" style="box-shadow: none;">
+                        <div class="section-header" style="border-left-color: var(--success); color: var(--success); background: #ECFDF5;">2. CDSS Analysis</div>
+                        <div id="analysis-placeholder" style="text-align: center; color: var(--text-muted); padding: 4rem 0;">Awaiting scan upload...</div>
+                        <div id="analysis-content" class="hidden">
+                            <div style="background: #F8FAFC; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
+                                <h4 style="margin: 0; color: var(--text-muted);">AI DIAGNOSIS:</h4>
+                                <p id="result-diagnosis" style="font-size: 1.25rem; font-weight: bold; margin: 0.5rem 0 0 0; color: var(--primary);"></p>
+                            </div>
+                            <div class="gauge-text" id="result-confidence" style="font-size: 2rem;">--%</div>
+                            
+                            <div class="image-preview-box" style="height: 240px; position: relative;">
+                                <img id="result-middle-image" src="" style="width: 100%; height: 100%; object-fit: contain; position: absolute; z-index: 1;" />
+                                <img id="result-annotated-image" src="" class="hidden" style="width: 100%; height: 100%; object-fit: contain; position: absolute; z-index: 2;" />
+                            </div>
+                            
+                            <button id="locate-btn" class="btn-outline hidden" style="margin-top: 0.5rem; width: 100%; padding: 0.4rem; font-size: 0.85rem;" onclick="toggleDetection()">
+                                <i class="fa-solid fa-crosshairs"></i> Locate Infection Zone
+                            </button>
+
+                            <div id="result-biomarkers" style="font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 600; color: #0f172a; white-space: pre-wrap; background: #f8fafc; padding: 15px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 1rem; line-height: 1.6; margin-top: 1rem;"></div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="padding: 0; display: flex; flex-direction: column; overflow: hidden; box-shadow: none;">
+                        <div style="display: flex; background: #F1F5F9; border-bottom: 1px solid var(--border);">
+                            <div id="ptab-notes" class="tab-btn active" onclick="switchP3Tab('notes')"><i class="fa-solid fa-notes-medical"></i> Notes</div>
+                            <div id="ptab-chat" class="tab-btn" onclick="switchP3Tab('chat')"><i class="fa-solid fa-message"></i> Consult</div>
+                            <div id="ptab-synth" class="tab-btn" onclick="switchP3Tab('synth')"><i class="fa-solid fa-brain"></i> Synthesis</div>
+                        </div>
+
+                        <div style="padding: 1.5rem; flex-grow: 1;">
+                            <div id="p3-notes">
+                                <div id="trend-alert-box" style="margin-bottom: 1rem; padding: 0.75rem; border-radius: 6px; background: #FFFBEB; border: 1px solid #FDE68A; color: #B45309; font-size: 0.85rem; font-weight: bold;">
+                                    <i class="fa-solid fa-chart-line"></i> Predictive Trend: Loading historical data...
+                                </div>
+                                <textarea id="doc-summary" rows="3" placeholder="Clinical notes..."></textarea>
+                                <textarea id="doc-meds" rows="2" placeholder="Prescriptions / Rx..."></textarea>
+                                
+                                <div style="margin: 1rem 0; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: #F8FAFC;">
+                                    <p style="margin: 0 0 0.5rem 0; font-weight: bold; font-size: 0.85rem;">AI Diagnostic Audit:</p>
+                                    <label style="display: block; font-size: 0.85rem; cursor: pointer; margin-bottom: 4px;"><input type="radio" name="ai_audit" value="agree" checked onchange="toggleAudit()"> ✅ Agree with AI</label>
+                                    <label style="display: block; font-size: 0.85rem; cursor: pointer;"><input type="radio" name="ai_audit" value="reject" onchange="toggleAudit()"> ❌ Reject / Override AI</label>
+                                    <input type="text" id="override-text" class="hidden" placeholder="Corrected Diagnosis..." style="margin-top: 0.5rem; margin-bottom: 0;">
+                                </div>
+                                <button onclick="pushToPatient()"><i class="fa-solid fa-cloud-arrow-up"></i> Sync Record to Database</button>
+                                <p id="sync-msg" style="color: var(--success); font-weight: bold; text-align: center; margin-top: 0.5rem;"></p>
+                            </div>
+                            
+                            <div id="p3-chat" class="hidden" style="display: flex; flex-direction: column;">
+                                <div id="doc-chat-response" style="margin-bottom: 1rem; padding: 0.75rem; background: white; border-radius: 6px; font-size: 0.9rem; border: 1px solid var(--border); height: 250px; overflow-y: auto;">
+                                    <i style="color: var(--text-muted);">AI consultation responses will appear here...</i>
+                                </div>
+                                <input type="text" id="doc-chat-query" placeholder="Ask AI a question..." style="margin-bottom: 0.5rem;">
+                                <button class="btn-outline" onclick="askDoctorAI()">Send Message</button>
+                            </div>
+                            
+                            <div id="p3-synth" class="hidden" style="display: flex; flex-direction: column;">
+                                <div id="synth-response" style="margin-bottom: 1rem; padding: 0.75rem; background: #F8FAFC; border-radius: 6px; font-size: 0.9rem; border: 1px solid var(--border); height: 250px; overflow-y: auto;">
+                                    <i style="color: var(--text-muted);">Multimodal data synthesis will appear here...</i>
+                                </div>
+                                <textarea id="synth-prompt" rows="2" placeholder="E.g., Does the blood report confirm the X-Ray diagnosis?" style="margin-bottom: 0.5rem;"></textarea>
+                                <button onclick="runSynthesis()">FUSE & ANALYZE DATA</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <h3><i class="fa-solid fa-shield-heart" style="color: var(--accent);"></i> MedFuse | Virtual CDSS</h3>
+                <p>Intelligent Systems for Real-World Clinical Decision Making.</p>
+                <p style="margin-top: 0.5rem; font-weight: bold; color: var(--secondary);">
+                    Designed & Engineered by DocDuo
+                </p>
+            </div>
+            
+            <div class="footer-links">
+                <div>
+                    <a href="#about">About System</a>
+                    <a href="#privacy">HIPAA Privacy Policy</a>
+                    <a href="#terms">Terms of Service</a>
+                </div>
+                <div class="footer-contact">
+                    ✉️ Clinical Support: <a href="mailto:support@MedFuse.edu">support@MedFuse.edu</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            &copy; <span id="current-year"></span> MedFuse Technologies. All rights reserved. Authorized for Hackathon Demonstration.
+        </div>
+    </footer>
+
+    <div id="history-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100;">
+        <div class="card" style="width: 90%; max-width: 800px; max-height: 85vh; overflow-y: auto; background: white; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border);">
+                <h2 id="modal-patient-name" style="margin: 0; color: var(--primary);"><i class="fa-solid fa-file-medical"></i> Medical Records</h2>
+                <button class="btn-outline" style="width: auto; padding: 0.4rem 0.8rem;" onclick="closeHistoryModal()"><i class="fa-solid fa-xmark"></i> Close File</button>
+            </div>
+            <div id="modal-history-list">Loading records...</div>
+        </div>
+    </div>
+    <div id="ddi-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+        <div class="card" style="width: 90%; max-width: 500px; background: white; border-top: 6px solid var(--danger); position: relative;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 1.5rem;">
+                <i class="fa-solid fa-triangle-exclamation fa-beat" style="color: var(--danger); font-size: 2.5rem;"></i>
+                <h2 style="margin: 0; color: var(--danger);">SEVERE DRUG INTERACTION</h2>
+            </div>
+            <div id="ddi-alert-text" style="background: #FEF2F2; color: #9F1239; padding: 1rem; border-radius: 8px; border: 1px solid #FECDD3; font-weight: 600; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">
+                </div>
+            <p style="font-weight: bold; margin-bottom: 1.5rem; color: var(--primary);">Do you want to override this safety warning and prescribe anyway?</p>
+            <div style="display: flex; gap: 1rem;">
+                <button class="btn-outline" style="flex: 1; border-color: var(--text-muted); color: var(--text-muted);" onclick="abortSync()">Cancel & Revise</button>
+                <button class="btn-danger" style="flex: 1;" onclick="finalizeSync()">Override & Sync</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('current-year').innerText = new Date().getFullYear();
+        
+
+        const API_URL = "http://localhost:8000";
+        let activePatientId = null; 
+        let rawAIReportData = ""; let sessionVisionData = ""; let sessionBloodData = "";
+        document.getElementById('current-year').innerText = new Date().getFullYear();
+        
+        // --- NEW VARIABLES FOR PDF GENERATOR ---
+        let currentModalHistory = [];
+        let currentModalPatientId = "";
+        let currentModalPatientName = "";
+
+        function switchTab(t) { 
+            ['login','reg-patient','reg-doctor'].forEach(x => { 
+                document.getElementById('form-'+x).classList.add('hidden'); 
+                document.getElementById('tab-'+x).style.color = 'var(--text-muted)'; 
+                document.getElementById('tab-'+x).style.borderBottom = 'none'; 
+            }); 
+            document.getElementById('form-'+t).classList.remove('hidden'); 
+            document.getElementById('tab-'+t).style.color = 'var(--primary)'; 
+            document.getElementById('tab-'+t).style.borderBottom = '2px solid var(--primary)'; 
+        }
+
+        function switchP3Tab(t) { 
+            ['notes','chat','synth'].forEach(x => { 
+                document.getElementById('p3-'+x).classList.add('hidden'); 
+                document.getElementById('ptab-'+x).classList.remove('active'); 
+            }); 
+            document.getElementById('p3-'+t).classList.remove('hidden'); 
+            document.getElementById('ptab-'+t).classList.add('active'); 
+        }
+
+        function toggleAudit() { 
+            const isReject = document.querySelector('input[name="ai_audit"]:checked').value === 'reject'; 
+            const oi = document.getElementById('override-text'); 
+            if(isReject) { oi.classList.remove('hidden'); } else { oi.classList.add('hidden'); oi.value=""; } 
+        }
+        
+        function logout() { location.reload(); }
+
+        function toggleAccordion(id) {
+            const el = document.getElementById(id);
+            if (el.classList.contains('hidden')) el.classList.remove('hidden');
+            else el.classList.add('hidden');
+        }
+
+        function downloadPDF(index) {
+            const record = currentModalHistory[index];
+            const element = document.createElement('div');
+            
+            // Build the Printable Medical Document Layout
+            element.innerHTML = `
+                <div style="padding: 40px; font-family: 'Inter', sans-serif; color: #1E293B;">
+                    
+                    <div style="border-bottom: 3px solid #0B2447; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <h1 style="color: #0B2447; margin: 0; font-size: 2.2rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-shield-heart" style="color: #576CBC;"></i> MedFuse OS
+                            </h1>
+                            <p style="margin: 5px 0 0 0; color: #64748B;">Intelligent Clinical Decision Support</p>
+                        </div>
+                        <div style="text-align: right; font-size: 0.95rem; color: #64748B;">
+                            <strong style="color: #0B2447; font-size: 1.1rem;">Official Discharge Summary</strong><br>
+                            Date: ${record.date}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 30px; background: #F8FAFC; padding: 15px; border-radius: 8px; border: 1px solid #E2E8F0;">
+                        <table style="width: 100%; text-align: left; border-collapse: collapse; font-size: 0.95rem;">
+                            <tr>
+                                <td style="padding: 8px 0;"><strong>Patient Name:</strong> ${currentModalPatientName}</td>
+                                <td style="padding: 8px 0;"><strong>Patient ID:</strong> ${currentModalPatientId}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0;"><strong>Attending Physician:</strong> ${record.doctor}</td>
+                                <td style="padding: 8px 0;"><strong>Department:</strong> ${record.department}</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="margin-bottom: 25px;">
+                        <h3 style="color: #0B2447; border-bottom: 2px solid #E2E8F0; padding-bottom: 5px; font-size: 1.2rem;">1. Clinical Summary</h3>
+                        <p style="white-space: pre-wrap; line-height: 1.6;">${record.summary || "No notes provided."}</p>
+                    </div>
+
+                    <div style="margin-bottom: 25px;">
+                        <h3 style="color: #0B2447; border-bottom: 2px solid #E2E8F0; padding-bottom: 5px; font-size: 1.2rem;">2. Approved Prescriptions (Rx)</h3>
+                        <p style="white-space: pre-wrap; color: #E11D48; font-weight: bold; font-size: 1.1rem;">${record.medication || "No medications prescribed."}</p>
+                    </div>
+
+                    <div style="margin-bottom: 25px;">
+                        <h3 style="color: #0B2447; border-bottom: 2px solid #E2E8F0; padding-bottom: 5px; font-size: 1.2rem;">3. CDSS Multimodal Analysis</h3>
+                        <div style="font-weight: bold; white-space: pre-wrap; background: #F8FAFC; padding: 15px; border: 1px solid #cbd5e1; border-radius: 8px; line-height: 1.6;">${record.reports}</div>
+                    </div>
+
+                    ${record.image ? `<div style="margin-top: 30px; text-align: center;"><h3 style="color: #0B2447; text-align: left; border-bottom: 2px solid #E2E8F0; padding-bottom: 5px; font-size: 1.2rem;">4. Diagnostic Imaging</h3><img src="${record.image}" style="max-height: 350px; border-radius: 8px; border: 1px solid #E2E8F0; margin-top: 15px;"></div>` : ""}
+                    
+                    <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; text-align: center;">
+                        This document was securely generated by MedFuse Offline Edge Architecture.<br>
+                        <strong>Designed & Engineered by DocDuo</strong>
+                    </div>
+                </div>
+            `;
+
+            // PDF Configuration Settings
+            const opt = {
+                margin:       [0.5, 0.5, 0.5, 0.5], // Top, Left, Bottom, Right margins
+                filename:     `Discharge_${currentModalPatientId}_${record.date}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            // Generate and save!
+            html2pdf().set(opt).from(element).save();
+        }
+
+        function toggleDetection() {
+            const annotatedImg = document.getElementById('result-annotated-image');
+            const btn = document.getElementById('locate-btn');
+            if(annotatedImg.classList.contains('hidden')) {
+                annotatedImg.classList.remove('hidden');
+                btn.innerHTML = "<i class='fa-solid fa-eye-slash'></i> Hide Detection Box";
+                btn.style.background = "var(--danger)";
+                btn.style.color = "white";
+                btn.style.borderColor = "var(--danger)";
+            } else {
+                annotatedImg.classList.add('hidden');
+                btn.innerHTML = "<i class='fa-solid fa-crosshairs'></i> Locate Infection Zone";
+                btn.style.background = "transparent";
+                btn.style.color = "var(--danger)";
+                btn.style.borderColor = "var(--danger)";
+            }
+        }
+
+        async function registerPatient() {
+            const name = document.getElementById('reg-p-name').value; const age = document.getElementById('reg-p-age').value; const phone = document.getElementById('reg-p-phone').value; const loc = document.getElementById('reg-p-location').value;
+            const res = await fetch(`${API_URL}/auth/register-patient?name=${name}&age=${age}&phone=${phone}&location=${loc}`, { method: 'POST' });
+            const data = await res.json();
+            if(data.status === "Success") { document.getElementById('reg-p-msg').classList.remove('hidden'); document.getElementById('reg-p-msg').innerHTML = `<strong>Patient ID:</strong> <br><span style="font-size: 1.2rem;">${data.patient_id}</span><br><button style="margin-top:10px" onclick="switchTab('login')">Go to Login</button>`; }
+        }
+
+        async function registerDoctor() {
+            const n = document.getElementById('reg-d-name').value; const d = document.getElementById('reg-d-dept').value; const a = document.getElementById('reg-d-admin').value;
+            const res = await fetch(`${API_URL}/auth/register-doctor?name=${n}&specialty=${d}&admin_password=${a}`, { method: 'POST' });
+            const data = await res.json();
+            if(data.status === "Success") { document.getElementById('reg-d-msg').classList.remove('hidden'); document.getElementById('reg-d-msg').innerHTML = `<strong>Doctor ID:</strong> <br><span style="font-size: 1.2rem;">${data.doctor_id}</span><br><button style="margin-top:10px" onclick="switchTab('login')">Go to Login</button>`; }
+        }
+
+        async function login() {
+            const userId = document.getElementById('login-id').value;
+            const res = await fetch(`${API_URL}/auth/login?user_id=${userId}`, { method: 'POST' });
+            const data = await res.json();
+            if (data.status === "Success") {
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('logout-btn').classList.remove('hidden');
+
+                if (data.role === 'admin') {
+                    document.getElementById('user-display').innerHTML = `<i class="fa-solid fa-user-shield"></i> Admin System`;
+                    document.getElementById('admin-dashboard').classList.remove('hidden');
+                    renderAdminDashboard(data.data);
+                } else if (data.role === 'patient') {
+                    document.getElementById('user-display').innerHTML = `<i class="fa-solid fa-user"></i> ${data.data.name}`;
+                    document.getElementById('patient-dashboard').classList.remove('hidden');
+                    document.getElementById('patient-welcome').innerHTML = `Welcome, ${data.data.name}`;
+                    refreshPatientData(); 
+                } else if (data.role === 'doctor') {
+                    document.getElementById('user-display').innerHTML = `<i class="fa-solid fa-user-doctor"></i> ${data.data.name}`;
+                    document.getElementById('doctor-dashboard').classList.remove('hidden');
+                    document.getElementById('doctor-welcome').innerHTML = `<i class="fa-solid fa-stethoscope"></i> ${data.data.name} <span style="color: var(--text-muted); font-size: 1.2rem; font-weight: normal;">| ${data.data.specialty}</span>`;
+                    populateDoctorModels(data.data.specialty);
+                    renderDoctorQueue(data.data.patients_queue); 
+                }
+            } else { document.getElementById('login-msg').innerText = "ID not found."; }
+        }
+
+        async function renderAdminDashboard(outbreaks) {
+            const listDiv = document.getElementById('admin-outbreak-list');
+            let html = "";
+            
+            // 1. Initialize Map (only once)
+            if (!window.adminMap) {
+                // Default center to India, zoomed out
+                window.adminMap = L.map('outbreak-map').setView([20.5937, 78.9629], 5);
+                
+                // FIXED: Switched to CartoDB Light Theme (No localhost blocking + Professional UI)
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                    subdomains: 'abcd',
+                    maxZoom: 20
+                }).addTo(window.adminMap);
+            }
+            
+            // Clear old markers
+            if(window.mapMarkers) window.mapMarkers.forEach(m => window.adminMap.removeLayer(m));
+            window.mapMarkers = [];
+
+            if (Object.keys(outbreaks).length === 0) {
+                listDiv.innerHTML = "<div style='padding: 2rem; text-align: center; color: var(--text-muted);'><i class='fa-solid fa-shield-check' style='font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;'></i><br>No active outbreaks. All regions normal.</div>";
+                return;
+            }
+
+            // 2. Loop through outbreaks, build list, and plot on map
+            for (const [loc, count] of Object.entries(outbreaks)) {
+                // Build the List UI
+                if (count >= 5) html += `<div style="background: #FEF2F2; border: 1px solid var(--danger); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;"><h4 style="color: var(--danger); margin: 0;"><i class="fa-solid fa-biohazard"></i> INFECTIOUS ZONE: ${loc}</h4><p style="margin: 0.5rem 0 0 0;"><strong>${count}</strong> active cases. Quarantine protocols advised.</p></div>`;
+                else html += `<div style="background: #F8FAFC; border: 1px solid var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;"><h4 style="color: var(--primary); margin: 0;"><i class="fa-solid fa-location-dot"></i> ${loc}</h4><p style="margin: 0.5rem 0 0 0;">${count} active cases.</p></div>`;
+                
+                // Fetch GPS Coordinates for the Map dynamically!
+                try {
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(loc)}`);
+                    const geoData = await geoRes.json();
+                    if(geoData && geoData.length > 0) {
+                        const lat = geoData[0].lat;
+                        const lon = geoData[0].lon;
+                        
+                        // Draw Red Danger Circle
+                        const circleColor = count >= 5 ? '#E11D48' : '#F59E0B'; // Red for severe, Orange for minor
+                        const radiusSize = count * 15000; // Scales with case count
+                        
+                        const marker = L.circle([lat, lon], {
+                            color: circleColor,
+                            fillColor: circleColor,
+                            fillOpacity: 0.4,
+                            radius: radiusSize
+                        }).addTo(window.adminMap);
+                        
+                        marker.bindPopup(`<b>${loc}</b><br>${count} Active Cases`);
+                        window.mapMarkers.push(marker);
+                        
+                        // Pan map to the latest location
+                        window.adminMap.setView([lat, lon], 6);
+                    }
+                } catch(e) { console.error("Geocoding failed for: ", loc); }
+            }
+            listDiv.innerHTML = html;
+            
+            // Force map resize to fix gray tile bugs
+            setTimeout(() => { window.adminMap.invalidateSize(); }, 300);
+        }
+
+        async function refreshDoctorQueue() { const userId = document.getElementById('login-id').value; const res = await fetch(`${API_URL}/auth/login?user_id=${userId}`, { method: 'POST' }); const data = await res.json(); if (data.status === "Success" && data.role === 'doctor') { renderDoctorQueue(data.data.patients_queue); } }
+
+        async function triggerSOS() { document.getElementById('sos-msg').innerText = "Alerting Triage..."; const res = await fetch(`${API_URL}/emergency/sos?patient_id=${document.getElementById('login-id').value}&latitude=13.9299&longitude=75.5681`, { method: 'POST' }); const data = await res.json(); document.getElementById('sos-msg').innerHTML = `<i class="fa-solid fa-truck-medical"></i> ${data.message}`; }
+
+        async function loadDoctors(dept) { const res = await fetch(`${API_URL}/doctors/${dept}`); const data = await res.json(); const listDiv = document.getElementById('doctor-list'); listDiv.classList.remove('hidden'); if (data.doctors.length > 0) { let html = ``; data.doctors.forEach(doc => { html += `<div style="display:flex; justify-content:space-between; align-items:center; background: white; padding:10px; margin-bottom:10px; border-radius:6px; border:1px solid var(--border);"><span><i class="fa-solid fa-user-doctor" style="color: var(--accent);"></i> ${doc.name}</span><button style="width:auto; padding: 0.4rem 1rem;" onclick="bookSpecificDoctor('${doc.id}')">Book</button></div>`; }); listDiv.innerHTML = html; } else { listDiv.innerHTML = `<p style="color: var(--text-muted);">No doctors currently available in ${dept}.</p>`; } }
+
+        async function bookSpecificDoctor(docId) { const res = await fetch(`${API_URL}/appointments/book?patient_id=${document.getElementById('login-id').value}&doctor_id=${docId}`, { method: 'POST' }); await res.json(); refreshPatientData(); }
+
+        async function closeAppointment() {
+            document.getElementById('close-msg').innerText = "Closing appointment...";
+            const res = await fetch(`${API_URL}/patient/close-appointment?patient_id=${document.getElementById('login-id').value}`, { method: 'POST' });
+            await res.json();
+            document.getElementById('close-msg').innerText = "";
+            refreshPatientData(); 
+        }
+
+        function populateDoctorModels(specialty) { const s = document.getElementById('scan-type'); let html = `<option value="/analyze/blood-report">Blood Report Local OCR</option>`; if(specialty==='Dermatology')html+=`<option value="/predict/dermatology">Skin Lesion Model</option>`; else if(specialty==='Neurology')html+=`<option value="/predict/brain-mri">Brain MRI Model</option>`; else if(specialty==='Pulmonology')html+=`<option value="/predict/pneumonia">Chest X-Ray Model</option>`; s.innerHTML=html; }
+
+        function renderDoctorQueue(queue) {
+            let criticalHTML = ""; let routineHTML = ""; let closedHTML = "";
+            queue.forEach(item => { 
+                if (item.triage === "Critical") {
+                    criticalHTML += `<div class="patient-row" style="background: #FEF2F2; border-left: 4px solid var(--danger); margin-bottom: 8px;" onclick="openWorkspace('${item.id}')"><div><strong style="color: var(--danger); font-size: 1.1rem;"><i class="fa-solid fa-triangle-exclamation"></i> ${item.name}</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">ID: ${item.id}</span></div></div>`;
+                } else if (item.triage === "Closed") {
+                    closedHTML += `<div class="patient-row" style="background: #F8FAFC; border-left: 4px solid var(--text-muted); margin-bottom: 8px;" onclick="viewPatientHistory('${item.id}', '${item.name}')"><div><strong style="color: var(--text-muted); font-size: 1.1rem;"><i class="fa-solid fa-folder-closed"></i> ${item.name}</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">ID: ${item.id}</span></div></div>`;
+                } else {
+                    routineHTML += `<div class="patient-row" style="background: white; border-left: 4px solid var(--success); margin-bottom: 8px;" onclick="openWorkspace('${item.id}')"><div><strong style="color: var(--primary); font-size: 1.1rem;">${item.name}</strong><br><span style="font-size: 0.75rem; color: var(--text-muted);">ID: ${item.id}</span></div></div>`;
+                }
+            });
+            
+            document.getElementById('q-critical').innerHTML = criticalHTML || "<p style='font-size: 0.85rem; color: var(--text-muted); text-align: center;'><i class='fa-solid fa-check'></i> No critical patients.</p>";
+            document.getElementById('q-routine').innerHTML = routineHTML || "<p style='font-size: 0.85rem; color: var(--text-muted); text-align: center;'><i class='fa-solid fa-bed'></i> Empty queue.</p>";
+            document.getElementById('q-closed').innerHTML = closedHTML || "<p style='font-size: 0.85rem; color: var(--text-muted); text-align: center;'>No closed files.</p>";
+        }
+
+        async function openWorkspace(pid) {
+            activePatientId = pid;
+            
+            // FIX 1: Clear out all previous AI data so it doesn't leak between different patients!
+            rawAIReportData = ""; 
+            sessionVisionData = ""; 
+            sessionBloodData = ""; 
+            window.tempScanBase64 = "";
+
+            document.getElementById('doc-queue-view').classList.add('hidden'); 
+            document.getElementById('doc-workspace-view').classList.remove('hidden');
+            document.getElementById('workspace-patient-name').innerHTML = `<i class="fa-solid fa-hospital-user"></i> Workspace: <span style="color: var(--text-muted); font-weight: normal;">${pid}</span>`;
+            document.getElementById('analysis-placeholder').classList.remove('hidden'); 
+            document.getElementById('analysis-content').classList.add('hidden');
+            
+            document.getElementById('trend-alert-box').innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Loading longitudinal data...";
+            try {
+                const trendRes = await fetch(`${API_URL}/doctor/trend/${pid}`);
+                const trendData = await trendRes.json();
+                document.getElementById('trend-alert-box').innerHTML = `<i class="fa-solid fa-chart-line"></i> <strong>Predictive Trend:</strong> ${trendData.trend}`;
+            } catch(e) { 
+                document.getElementById('trend-alert-box').innerHTML = "<i class='fa-solid fa-circle-exclamation'></i> Predictive Trend: Error loading history."; 
+            }
+        }
+
+        function closeWorkspace() { activePatientId = null; document.getElementById('doc-workspace-view').classList.add('hidden'); document.getElementById('doc-queue-view').classList.remove('hidden'); refreshDoctorQueue(); }
+
+        async function viewPatientHistory(pid, name) {
+            document.getElementById('history-modal').classList.remove('hidden');
+            const displayName = name === 'Active Patient' ? `Current Patient (${pid})` : `${name} (${pid})`;
+            document.getElementById('modal-patient-name').innerHTML = `<i class="fa-solid fa-book-medical"></i> Records: ${displayName}`;
+            document.getElementById('modal-history-list').innerHTML = "<i class='fa-solid fa-spinner fa-spin' style='color: var(--primary);'></i> Loading records...";
+            
+            const res = await fetch(`${API_URL}/patient/${pid}`);
+            const data = await res.json();
+            
+            if (data.status === "Success" && data.history && data.history.length > 0) {
+                const reversedHistory = [...data.history].reverse();
+                
+                // SAVE TO GLOBALS FOR PDF GENERATOR
+                currentModalHistory = reversedHistory;
+                currentModalPatientId = pid;
+                currentModalPatientName = name === 'Active Patient' ? 'Current Patient' : name;
+
+                let historyHTML = "";
+                reversedHistory.forEach((record, index) => {
+                    historyHTML += `
+                        <div style="background: white; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <div class="history-header" style="padding: 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; transition: 0.2s;" onclick="toggleAccordion('doc-hist-${index}')">
+                                <strong style="color: var(--primary); font-size: 1.1rem;"><i class="fa-regular fa-calendar"></i> ${record.date} | ${record.doctor}</strong>
+                                <span style="color: var(--text-muted); font-size: 0.9rem; font-weight: bold;">${record.department} <i class="fa-solid fa-chevron-down"></i></span>
+                            </div>
+                            <div id="doc-hist-${index}" class="hidden" style="padding: 1.5rem; border-top: 1px solid var(--border); background: white;">
+                                
+                                <button class="btn-outline" style="width: auto; padding: 0.4rem 0.8rem; margin-bottom: 1rem; border-color: var(--primary); color: var(--primary);" onclick="downloadPDF(${index})">
+                                    <i class="fa-solid fa-file-pdf"></i> Download Discharge Summary
+                                </button>
+
+                                <p><strong>Summary:</strong> ${record.summary || "<i style='color: var(--text-muted);'>No notes provided</i>"}</p>
+                                <p style="color: var(--danger);"><strong>Prescription:</strong> ${record.medication || "<i style='color: var(--text-muted);'>No medications prescribed</i>"}</p>
+                                <div style="font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 600; color: #0f172a; white-space: pre-wrap; background: #f8fafc; padding: 15px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 1rem; line-height: 1.6;">${record.reports}</div>
+                                ${record.image ? `<img src="${record.image}" style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; border: 1px solid var(--border);">` : ""}
+                            </div>
+                        </div>`;
+                });
+                document.getElementById('modal-history-list').innerHTML = historyHTML;
+            } else {
+                document.getElementById('modal-history-list').innerHTML = "<div style='padding: 2rem; text-align: center; color: var(--text-muted);'><i class='fa-solid fa-folder-open' style='font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;'></i><br><i>No previous medical history found.</i></div>";
+            }
+        }
+
+        function closeHistoryModal() { document.getElementById('history-modal').classList.add('hidden'); }
+
+        function previewImage(event) { const file = event.target.files[0]; if(file) document.getElementById('preview-container').innerHTML = `<img src="${URL.createObjectURL(file)}" style="max-width:100%; max-height:100%; object-fit:contain; border-radius: 4px;">`; }
+
+        async function runDoctorAI() {
+            const fileInput = document.getElementById('file-upload'); 
+            const endpoint = document.getElementById('scan-type').value; 
+            if (fileInput.files.length === 0) return;
+
+            document.getElementById('analysis-placeholder').innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Processing Vision AI...";
+            const formData = new FormData(); 
+            formData.append("file", fileInput.files[0]); 
+            formData.append("patient_id", activePatientId);
+            
+            const reader = new FileReader(); 
+            reader.onloadend = () => { 
+                window.tempScanBase64 = reader.result; 
+                document.getElementById('result-middle-image').src = reader.result; 
+            }; 
+            reader.readAsDataURL(fileInput.files[0]);
+
+            const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            document.getElementById('analysis-placeholder').classList.add('hidden'); 
+            document.getElementById('analysis-content').classList.remove('hidden');
+            
+            if (data.diagnosis) {
+                document.getElementById('result-diagnosis').innerText = data.diagnosis; 
+                document.getElementById('result-confidence').innerText = data.confidence; 
+                document.getElementById('result-biomarkers').innerHTML = ""; 
+                
+                if(data.annotated_image) {
+                    document.getElementById('result-annotated-image').src = data.annotated_image;
+                    document.getElementById('result-annotated-image').classList.add('hidden');
+                    document.getElementById('locate-btn').classList.remove('hidden');
+                    document.getElementById('locate-btn').innerHTML = "<i class='fa-solid fa-crosshairs'></i> Locate Infection Zone";
+                } else {
+                    document.getElementById('locate-btn').classList.add('hidden');
+                }
+
+                // FIX 2: Notice the "+=" here! This APPENDS the new scan to the old one instead of deleting it.
+                rawAIReportData += `\n\n[VISION SCAN]\nModel: ${endpoint}\nDiagnosis: ${data.diagnosis}`; 
+                sessionVisionData = `Model: ${endpoint} | Diagnosis: ${data.diagnosis}`;
+            
+            } else if (data.data) {
+                document.getElementById('result-diagnosis').innerText = "BLOOD PROFILE EXTRACTED"; 
+                document.getElementById('result-confidence').innerText = "Valid"; 
+                let bioHtml = ""; 
+                let rawText = "BLOOD REPORT:\n";
+                data.data.forEach(item => { 
+                    bioHtml += `<div style="margin-bottom: 8px;"><strong>${item.Biomarker}:</strong> <span style="color: ${item.Status === 'Normal' ? 'var(--success)' : 'var(--danger)'}; font-weight: 600;">${item.Value} (${item.Status})</span></div>`; 
+                    rawText += `- ${item.Biomarker}: ${item.Value} (${item.Status})\n`; 
+                });
+                document.getElementById('result-biomarkers').innerHTML = bioHtml; 
+                
+                // FIX 3: "+=" Appends the blood text below the Vision text!
+                rawAIReportData += `\n\n[BLOOD PROFILE]\n${rawText}`; 
+                sessionBloodData = rawText;
+                document.getElementById('locate-btn').classList.add('hidden'); 
+            } else {
+                document.getElementById('analysis-placeholder').classList.remove('hidden'); 
+                document.getElementById('analysis-content').classList.add('hidden'); 
+                document.getElementById('analysis-placeholder').innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> ${data.message || "Analysis Failed."}`;
+            }
+        }
+
+        async function pushToPatient() {
+            if(!activePatientId) return;
+            const meds = document.getElementById('doc-meds').value;
+            
+            document.getElementById('sync-msg').innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Running DDI Safety Check...";
+            document.getElementById('sync-msg').style.color = "var(--danger)";
+            
+            try {
+                const ddiRes = await fetch(`${API_URL}/doctor/check-ddi`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patient_id: activePatientId, new_meds: meds }) });
+                const ddiData = await ddiRes.json();
+                
+                if (ddiData.status === "DANGER") {
+                    // Trigger custom UI modal instead of browser popup!
+                    document.getElementById('ddi-alert-text').innerText = ddiData.alert;
+                    document.getElementById('ddi-modal').classList.remove('hidden');
+                    return; // Stop the code here and wait for the doctor to click a button on the modal!
+                }
+            } catch(e) { console.log("DDI check bypassed."); }
+
+            // If the AI says it's SAFE, bypass the modal and sync instantly
+            finalizeSync();
+        }
+
+        // Action 1: Doctor clicks Cancel
+        function abortSync() {
+            document.getElementById('ddi-modal').classList.add('hidden');
+            document.getElementById('sync-msg').innerText = "Sync aborted for patient safety. Please revise medications.";
+            document.getElementById('sync-msg').style.color = "var(--danger)";
+        }
+
+        // Action 2: Doctor clicks Override (or AI said it was Safe)
+        async function finalizeSync() {
+            document.getElementById('ddi-modal').classList.add('hidden'); // Hide modal if open
+
+            const summary = document.getElementById('doc-summary').value;
+            const meds = document.getElementById('doc-meds').value;
+            const auditDecision = document.querySelector('input[name="ai_audit"]:checked').value;
+            
+            let finalReportText = rawAIReportData || "No AI scans attached.";
+            if (auditDecision === 'reject') {
+                const overrideText = document.getElementById('override-text').value;
+                if(!overrideText) { alert("Please provide the corrected diagnosis before syncing."); return; }
+                finalReportText += `\n\n[DOCTOR AUDIT OVERRIDE]: AI Diagnosis Rejected.\nCorrected Diagnosis: ${overrideText}`;
+            } else { finalReportText += `\n\n[DOCTOR AUDIT]: AI Diagnosis Verified & Approved by Physician.`; }
+
+            document.getElementById('sync-msg').style.color = "var(--primary)";
+            document.getElementById('sync-msg').innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Syncing permanently to Medical Records DB...";
+            
+            const payload = { patient_id: activePatientId, doctor_id: document.getElementById('login-id').value, summary: summary, medication: meds, report_text: finalReportText, image_base64: window.tempScanBase64 || "" };
+
+            const res = await fetch(`${API_URL}/doctor/save-patient-record`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const data = await res.json();
+            if(data.status === "Success") {
+                document.getElementById('sync-msg').innerHTML = "<i class='fa-solid fa-check'></i> Saved to Records!";
+                setTimeout(closeWorkspace, 1500); 
+            }
+        }
+
+        async function refreshPatientData() { 
+            const patientId = document.getElementById('login-id').value; 
+            const res = await fetch(`${API_URL}/patient/${patientId}`); 
+            const data = await res.json(); 
+            
+            if(data.status === "Success") { 
+                if (data.appointment) { 
+                    document.getElementById('booking-section').classList.add('hidden'); 
+                    document.getElementById('active-appointment-section').classList.remove('hidden'); 
+                    document.getElementById('active-appt-details').innerHTML = `<strong>Doctor:</strong> ${data.appointment.doctor} <br><strong>Dept:</strong> ${data.appointment.department}`; 
+                } else {
+                    document.getElementById('booking-section').classList.remove('hidden'); 
+                    document.getElementById('active-appointment-section').classList.add('hidden'); 
+                }
+                
+                const listDiv = document.getElementById('medical-records-list');
+                if (data.history && data.history.length > 0) {
+                    const reversedHistory = [...data.history].reverse();
+                    
+                    // NEW: Save data to globals so the PDF generator can access it from the Patient Dashboard!
+                    currentModalHistory = reversedHistory;
+                    currentModalPatientId = patientId;
+                    currentModalPatientName = document.getElementById('user-display').innerText;
+
+                    let historyHTML = "";
+                    reversedHistory.forEach((record, index) => {
+                        historyHTML += `
+                            <div style="background: white; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                                <div class="history-header" style="padding: 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; transition: 0.2s;" onclick="toggleAccordion('pat-hist-${index}')">
+                                    <strong style="color: var(--primary); font-size: 1.1rem;"><i class="fa-regular fa-calendar"></i> ${record.date} | ${record.doctor}</strong>
+                                    <span style="color: var(--text-muted); font-size: 0.9rem; font-weight: bold;">${record.department} <i class="fa-solid fa-chevron-down"></i></span>
+                                </div>
+                                <div id="pat-hist-${index}" class="hidden" style="padding: 1.5rem; border-top: 1px solid var(--border); background: white;">
+                                    
+                                    <button class="btn-outline" style="width: auto; padding: 0.4rem 0.8rem; margin-bottom: 1rem; border-color: var(--primary); color: var(--primary);" onclick="downloadPDF(${index})">
+                                        <i class="fa-solid fa-file-pdf"></i> Download Discharge Summary
+                                    </button>
+
+                                    <p><strong>Summary:</strong> ${record.summary || "<i style='color: var(--text-muted);'>No notes provided</i>"}</p>
+                                    <p style="color: var(--danger);"><strong>Prescription:</strong> ${record.medication || "<i style='color: var(--text-muted);'>No medications prescribed</i>"}</p>
+                                    
+                                    <div style="font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 600; color: #0f172a; white-space: pre-wrap; background: #f8fafc; padding: 15px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 1rem; line-height: 1.6;">${record.reports}</div>
+                                    
+                                    ${record.image ? `<img src="${record.image}" style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; border: 1px solid var(--border);">` : ""}
+                                </div>
+                            </div>`;
+                    });
+                    listDiv.innerHTML = historyHTML;
+                } else {
+                    listDiv.innerHTML = "<div style='text-align: center; padding: 3rem; color: var(--text-muted);'><i class='fa-solid fa-file-medical' style='font-size: 3rem; opacity: 0.2; margin-bottom: 1rem;'></i><br><i>No medical history found.</i></div>";
+                }
+            } 
+        }
+
+        async function askDoctorAI() { 
+            const query = document.getElementById('doc-chat-query').value; 
+            document.getElementById('doc-chat-response').innerHTML = "<i class='fa-solid fa-spinner fa-spin' style='color: var(--primary);'></i> Consulting..."; 
+            const res = await fetch(`${API_URL}/chat/medical-assistant?user_query=${encodeURIComponent(query)}&role=doctor`, { method: 'POST' }); 
+            const data = await res.json(); 
+            document.getElementById('doc-chat-response').innerHTML = marked.parse(data.response); 
+        }
+
+        async function runSynthesis() { 
+            const prompt = document.getElementById('synth-prompt').value; 
+            document.getElementById('synth-response').innerHTML = "<i class='fa-solid fa-spinner fa-spin' style='color: var(--primary);'></i> Fusing modalities..."; 
+            const res = await fetch(`${API_URL}/doctor/synthesize`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vision_data: sessionVisionData, blood_data: sessionBloodData, custom_prompt: prompt }) }); 
+            const data = await res.json(); 
+            document.getElementById('synth-response').innerHTML = marked.parse(data.response); 
+        }
+    </script>
+</body>
+</html>
