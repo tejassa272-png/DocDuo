@@ -10,7 +10,7 @@
 
 **MedFuse OS** is an offline-first, hybrid edge-cloud Clinical Decision Support System (CDSS) engineered for bandwidth-starved environments. 
 
-Developed by **Team DocDuo** for **HackFest 1.0** at JNNCE.
+Developed by **Team DocDuo**
 
 </div>
 
