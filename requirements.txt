@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+numpy
+opencv-python-headless
+onnxruntime
+pytesseract
+Pillow
+google-genai
+groq
+python-multipart
