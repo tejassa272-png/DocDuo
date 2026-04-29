@@ -91,4 +91,5 @@ git clone https://github.com/tejassa272-png/DocDuo.git
 cd DocDuo
 ```
 **2. Run Server.py file**
+
 **3. open the app.html file**
